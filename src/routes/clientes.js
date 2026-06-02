@@ -95,4 +95,31 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+
+// ── ACTIVAR / DESACTIVAR programado automático ──────────────────────────────
+const { ejecutarCicloNotificaciones } = require('../services/scheduler');
+
+router.patch('/:id/programado-automatico', auth, async (req, res) => {
+  const { id } = req.params;
+  const { activo } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE clientes SET programado_automatico = $1, updated_at = NOW()
+       WHERE id = $2 RETURNING id, nombre, programado_automatico`,
+      [activo, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Cliente no encontrado' });
+    res.json({
+      mensaje: activo ? 'Programado automático activado' : 'Programado automático desactivado',
+      cliente: result.rows[0],
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.post('/scheduler/ejecutar-ahora', auth, async (req, res) => {
+  res.json({ mensaje: 'Ciclo iniciado. Revisa los logs del servidor.' });
+  ejecutarCicloNotificaciones();
+});
 module.exports = router;
